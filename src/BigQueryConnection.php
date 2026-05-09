@@ -145,18 +145,12 @@ class BigQueryConnection extends Connection
     {
         throw new LogicException('BigQuery does not support transactions.');
     }
-    
-    /**
-     * Execute a select query using the BigQuery client and return rows as stdClass objects.
-     * Compatible signature with Connection::select($query, $bindings = [], $useReadPdo = true)
-     *
-     * @param string $query
-     * @param array $bindings
-     * @param bool $useReadPdo
-     * @return array
-     */
+
+    #[Override]
     public function select($query, $bindings = [], $useReadPdo = true): array
     {
+        $start = microtime(true);
+
         $job = $this->client->query($query);
 
         if (! empty($bindings)) {
@@ -165,13 +159,14 @@ class BigQueryConnection extends Connection
 
         $result = $this->client->runQuery($job);
 
-        $out = [];
+        $this->logQuery($query, $bindings, $this->getElapsedTime($start));
+
+        $rows = [];
+
         foreach ($result as $row) {
-            $out[] = (object) ((array) $row);
+            $rows[] = (object) ((array) $row);
         }
 
-        $this->logQuery($query, $bindings, 0);
-
-        return $out;
+        return $rows;
     }
 }
