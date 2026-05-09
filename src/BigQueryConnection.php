@@ -2,10 +2,12 @@
 
 namespace NomanSheikh\LaravelBigqueryEloquent;
 
+use Closure;
 use Google\Cloud\BigQuery\BigQueryClient;
 use Google\Cloud\BigQuery\QueryResults;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Processors\Processor;
+use LogicException;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryGrammar;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryProcessor;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryQueryBuilder;
@@ -29,10 +31,18 @@ class BigQueryConnection extends Connection
         $this->projectId = (string) ($config['project_id'] ?? '');
         $this->dataset = (string) ($config['dataset'] ?? '');
 
-        $this->client = new BigQueryClient([
-            'projectId' => $this->projectId,
-            'keyFilePath' => (string) ($config['key_file'] ?? ''),
-        ]);
+        $clientConfig = ['projectId' => $this->projectId];
+        $keyFile = $config['key_file'] ?? null;
+
+        if (is_array($keyFile)) {
+            $clientConfig['keyFile'] = $keyFile;
+        }
+
+        if (is_string($keyFile) && $keyFile !== '') {
+            $clientConfig['keyFilePath'] = $keyFile;
+        }
+
+        $this->client = new BigQueryClient($clientConfig);
 
         $this->database = $this->dataset;
 
@@ -102,13 +112,37 @@ class BigQueryConnection extends Connection
         return 'BigQuery';
     }
 
-    public function getPdo(): null
+    public function getPdo(): never
     {
-        return null;
+        throw new LogicException('BigQuery does not use PDO. Use getClient() to access the BigQuery client.');
     }
 
-    public function getReadPdo(): null
+    public function getReadPdo(): never
     {
-        return null;
+        throw new LogicException('BigQuery does not use PDO. Use getClient() to access the BigQuery client.');
+    }
+
+    #[Override]
+    public function transaction(Closure $callback, $attempts = 1): never
+    {
+        throw new LogicException('BigQuery does not support transactions.');
+    }
+
+    #[Override]
+    public function beginTransaction(): never
+    {
+        throw new LogicException('BigQuery does not support transactions.');
+    }
+
+    #[Override]
+    public function commit(): never
+    {
+        throw new LogicException('BigQuery does not support transactions.');
+    }
+
+    #[Override]
+    public function rollBack($toLevel = null): never
+    {
+        throw new LogicException('BigQuery does not support transactions.');
     }
 }
